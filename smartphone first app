@@ -1,0 +1,255 @@
+package com.example.mysmartphone
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.mysmartphone.ui.theme.MySmartphoneTheme
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            MySmartphoneTheme {
+                CoffeeApp()
+            }
+        }
+    }
+}
+
+data class CoffeeRecommendation(
+    val name: String,
+    val description: String,
+    val origin: String,
+    val brewMethod: String,
+    val notes: String
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CoffeeApp() {
+    var selectedVibe by remember { mutableStateOf("Cozy") }
+    var selectedEnergy by remember { mutableStateOf("Low") }
+    var showResult by remember { mutableStateOf(false) }
+    var showModal by remember { mutableStateOf(false) }
+    
+    val sheetState = rememberModalBottomSheetState()
+
+    val recommendation = remember(selectedVibe, selectedEnergy) {
+        calculateCoffee(selectedVibe, selectedEnergy)
+    }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Barista Brain", fontWeight = FontWeight.Bold) }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            Text(
+                "Creative Coffee Calculator",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Text("What's your current vibe?", style = MaterialTheme.typography.titleMedium)
+            
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Cozy", "Productive", "Social").forEach { vibe ->
+                    FilterChip(
+                        selected = selectedVibe == vibe,
+                        onClick = { 
+                            selectedVibe = vibe
+                            showResult = false 
+                        },
+                        label = { Text(vibe) }
+                    )
+                }
+            }
+
+            Text("Energy Level Needed?", style = MaterialTheme.typography.titleMedium)
+            
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Low", "Medium", "Rocket Fuel").forEach { energy ->
+                    FilterChip(
+                        selected = selectedEnergy == energy,
+                        onClick = { 
+                            selectedEnergy = energy
+                            showResult = false 
+                        },
+                        label = { Text(energy) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Button(
+                onClick = { showResult = true },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Calculate My Brew")
+            }
+
+            if (showResult) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp)
+                        .clickable { showModal = true },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Your Match:", style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            recommendation.name,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Tap for professional tasting notes", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showModal) {
+            ModalBottomSheet(
+                onDismissRequest = { showModal = false },
+                sheetState = sheetState,
+                containerColor = MaterialTheme.colorScheme.surface
+            ) {
+                CoffeeDetailContent(recommendation)
+            }
+        }
+    }
+}
+
+@Composable
+fun CoffeeDetailContent(coffee: CoffeeRecommendation) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 48.dp),
+        horizontalAlignment = Alignment.Start
+    ) {
+        Text(
+            text = coffee.name,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "Professional Profile",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.outline
+        )
+        
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+        
+        InfoRow("Origin", coffee.origin)
+        InfoRow("Brew Method", coffee.brewMethod)
+        InfoRow("Tasting Notes", coffee.notes)
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = coffee.description,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Start
+        )
+    }
+}
+
+@Composable
+fun InfoRow(label: String, value: String) {
+    Row(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(
+            text = "$label: ",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+fun calculateCoffee(vibe: String, energy: String): CoffeeRecommendation {
+    return when {
+        vibe == "Cozy" && energy == "Low" -> CoffeeRecommendation(
+            "Flat White",
+            "A smooth, velvety delight perfect for rainy afternoons and soft blankets.",
+            "Ethiopia (Yirgacheffe)",
+            "Espresso + Microfoam",
+            "Lavender, Honey, Milk Chocolate"
+        )
+        vibe == "Productive" && energy == "Rocket Fuel" -> CoffeeRecommendation(
+            "Double Cortado",
+            "Precision-engineered for high-output work sessions. Sharp and effective.",
+            "Colombia (Huila)",
+            "Double Espresso + Splash of milk",
+            "Dark Cocoa, Cherry, Walnut"
+        )
+        vibe == "Social" && energy == "Medium" -> CoffeeRecommendation(
+            "V60 Pour Over",
+            "An elegant choice for conversation. Light-bodied and sophisticated.",
+            "Kenya (Nyeri)",
+            "Hand-poured Drip",
+            "Blackberry, Bergamot, Bright Acidity"
+        )
+        energy == "Rocket Fuel" -> CoffeeRecommendation(
+            "Nitro Cold Brew",
+            "Maximum velocity. Infused with nitrogen for a creamy, stout-like texture.",
+            "Brazil (Santos)",
+            "12-hour Cold Steeping + Nitrogen",
+            "Molasses, Roasted Malt, Intense Caffeine"
+        )
+        else -> CoffeeRecommendation(
+            "Classic Aeropress",
+            "The versatile choice for any situation. Balanced and adventurous.",
+            "Guatemala (Antigua)",
+            "Immersion Press",
+            "Caramel, Green Apple, Smooth Finish"
+        )
+    }
+}
