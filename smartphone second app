@@ -1,0 +1,78 @@
+package com.example.mysmartphone2
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.mysmartphone2.data.PreferenceManager
+import com.example.mysmartphone2.ui.CoffeeViewModel
+import com.example.mysmartphone2.ui.CoffeeViewModelFactory
+import com.example.mysmartphone2.ui.screens.*
+import com.example.mysmartphone2.ui.theme.MySmartphone2Theme
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val preferenceManager = PreferenceManager(applicationContext)
+        enableEdgeToEdge()
+        setContent {
+            MySmartphone2Theme {
+                CoffeeApp(preferenceManager)
+            }
+        }
+    }
+}
+
+@Composable
+fun CoffeeApp(preferenceManager: PreferenceManager) {
+    val navController = rememberNavController()
+    val viewModel: CoffeeViewModel = viewModel(
+        factory = CoffeeViewModelFactory(preferenceManager)
+    )
+    val userName by viewModel.userName.collectAsState()
+
+    NavHost(navController = navController, startDestination = "splash") {
+        composable("splash") {
+            SplashScreen(onTimeout = {
+                navController.navigate("list") {
+                    popUpTo("splash") { inclusive = true }
+                }
+            })
+        }
+        composable("list") {
+            CoffeeListScreen(
+                userName = userName,
+                onCoffeeClick = { id -> navController.navigate("detail/$id") },
+                onSettingsClick = { navController.navigate("settings") }
+            )
+        }
+        composable(
+            route = "detail/{coffeeId}",
+            arguments = listOf(navArgument("coffeeId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val coffeeId = backStackEntry.arguments?.getInt("coffeeId") ?: 0
+            CoffeeDetailScreen(
+                coffeeId = coffeeId,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+        composable("settings") {
+            SettingsScreen(
+                currentName = userName,
+                onSaveName = { newName ->
+                    viewModel.updateUserName(newName)
+                },
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+    }
+}
